@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    image: homeboard-app:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NITRO_PORT=3000
+      - DATABASE_URL=${DATABASE_URL}
+    command: [ "node", ".output/server/index.mjs" ]
