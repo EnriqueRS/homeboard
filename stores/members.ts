@@ -58,6 +58,10 @@ export const useMembersStore = defineStore('members', {
       if (typeof window === 'undefined') return
       localStorage.setItem('homeboard:memberId', this.selectedMemberId)
       localStorage.setItem('homeboard:isAdmin', this.isAdmin ? 'true' : 'false')
+    },
+    addMember(newMember: Member): void {
+      this.members.push(newMember)
+      this.persistToLocalStorage()
     }
   }
 })

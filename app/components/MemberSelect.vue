@@ -10,20 +10,20 @@
 </template>
 
 <script setup lang="ts">
-import { storeToRefs } from 'pinia'
-import { useMembersStore, type Member } from '../../stores/members'
+import { storeToRefs } from "pinia";
+import { useMembersStore, type Member } from "../../stores/members";
 
-const membersStore = useMembersStore()
-const { members, selectedMemberId } = storeToRefs(membersStore)
+const membersStore = useMembersStore();
+const { members, selectedMemberId } = storeToRefs(membersStore);
 
-const selectedId = selectedMemberId
+const selectedId = selectedMemberId;
 
 const persist = () => {
-  membersStore.setSelectedMember(selectedId.value)
-}
+  membersStore.setSelectedMember(selectedId.value);
+};
 
 onMounted(async () => {
-  membersStore.initializeFromLocalStorage()
-  await membersStore.loadMembers()
-})
+  membersStore.initializeFromLocalStorage();
+  await membersStore.loadMembers();
+});
 </script>

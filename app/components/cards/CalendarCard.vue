@@ -69,13 +69,25 @@
               <span
                 v-for="p in ev.participants"
                 :key="p.member.id"
-                :style="{ backgroundColor: p.member.color }"
-                class="w-3 h-3 rounded-full"
-              ></span>
+                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                :style="{
+                  backgroundColor: hexToPastel(p.member.color),
+                  color: '#222',
+                }"
+              >
+                <span
+                  class="w-2 h-2 inline-block rounded-full mr-1"
+                  :style="{ backgroundColor: p.member.color }"
+                ></span>
+                {{ p.member.name }}
+              </span>
             </div>
           </div>
           <div class="text-right">
-            <button class="mt-1 text-xs underline" @click="beginCreate()">
+            <button
+              class="mt-1 text-xs underline"
+              @click="openCreate(selectedDate)"
+            >
               Nuevo
             </button>
           </div>
@@ -88,18 +100,65 @@
             class="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
           />
           <div>
+            <label class="block text-xs mb-1 opacity-80">
+              Hora de inicio (opcional)
+            </label>
+            <input
+              v-model="form.startsAt"
+              type="time"
+              class="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
+              placeholder="Hora de inicio"
+              step="60"
+            />
+          </div>
+          <div>
             <label class="block text-xs mb-1 opacity-80"
               >Miembros (opcional)</label
             >
-            <select
-              multiple
-              v-model="form.memberIds"
-              class="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm min-h-[6rem]"
-            >
-              <option v-for="m in members" :key="m.id" :value="m.id">
+            <div class="flex flex-wrap gap-1 mb-2">
+              <span
+                v-for="m in members"
+                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer"
+                :style="{
+                  backgroundColor: form.memberIds.includes(m.id)
+                    ? m.color
+                    : hexToPastel(m.color),
+                  color: '#222',
+                }"
+                @click="
+                  () => {
+                    const idx = form.memberIds.indexOf(m.id);
+                    if (idx === -1) {
+                      form.memberIds.push(m.id);
+                    } else {
+                      form.memberIds.splice(idx, 1);
+                    }
+                  }
+                "
+              >
+                <span
+                  class="w-2 h-2 rounded-full mr-1"
+                  :style="{ backgroundColor: m.color }"
+                ></span>
                 {{ m.name }}
-              </option>
-            </select>
+                <button
+                  v-if="form.memberIds.includes(m.id)"
+                  type="button"
+                  class="ml-1 text-xs text-gray-700 hover:text-red-500 focus:outline-none"
+                  @click="
+                    () => {
+                      const idx = form.memberIds.indexOf(m.id);
+                      if (idx !== -1) {
+                        form.memberIds.value.splice(idx, 1);
+                      }
+                    }
+                  "
+                  aria-label="Quitar"
+                >
+                  &times;
+                </button>
+              </span>
+            </div>
           </div>
         </div>
         <div class="mt-4 flex justify-between items-center gap-2">
@@ -138,8 +197,9 @@ import {
   addDays,
   getDay,
 } from "date-fns";
+import { storeToRefs } from "pinia";
+import { useMembersStore, type Member } from "../../../stores/members";
 
-type Member = { id: string; name: string; color: string; isAdmin: boolean };
 type EventParticipant = { member: Member };
 type EventItem = {
   id: string;
@@ -151,7 +211,8 @@ type EventItem = {
 
 // removed single MemberSelect usage for a local multi-select
 
-const members = ref<Member[]>([]);
+const membersStore = useMembersStore();
+const { members } = storeToRefs(membersStore);
 
 const currentMonth = ref(new Date());
 const weekDays = ["L", "M", "X", "J", "V", "S", "D"];
@@ -238,13 +299,16 @@ function isToday(d: Date) {
 // modal state
 const showModal = ref(false);
 const selectedDate = ref<Date>(new Date());
-const form = reactive({ title: "" as string, memberIds: [] as string[] });
+const form = reactive({
+  title: "" as string,
+  memberIds: [] as string[],
+  startsAt: "" as string,
+});
 const editingEventId = ref<string | null>(null);
 
 function openCreate(date: Date) {
   selectedDate.value = date;
   form.title = "";
-  form.memberIds = preselectMember();
   editingEventId.value = null;
   showModal.value = true;
 }
@@ -256,13 +320,15 @@ async function saveEvent() {
   if (editingEventId.value) {
     const payload = { title: form.title, memberIds: form.memberIds };
     await $fetch(`/api/events/${editingEventId.value}` as any, {
+      title: form.title,
       method: "PUT",
+      date: format(selectedDate.value, "yyyy-MM-dd 'T'") + (form.startsAt || "00:00"),
       body: payload,
     });
   } else {
     const payload = {
       title: form.title,
-      date: format(selectedDate.value, "yyyy-MM-dd"),
+      date: format(selectedDate.value, "yyyy-MM-dd 'T'") + (form.startsAt || "00:00"),
       memberIds: form.memberIds,
     };
     await $fetch("/api/events", { method: "POST", body: payload });
@@ -298,12 +364,6 @@ function hexToPastel(hex: string): string {
   const gg = blend(g).toString(16).padStart(2, "0");
   const bb = blend(b).toString(16).padStart(2, "0");
   return `#${rr}${gg}${bb}`;
-}
-
-function preselectMember(): string[] {
-  if (typeof window === "undefined") return [];
-  const id = localStorage.getItem("homeboard:memberId");
-  return id ? [id] : [];
 }
 const selectedDayEvents = computed<EventItem[]>(() => {
   return (events.value as EventItem[]).filter((e: EventItem) =>

@@ -51,6 +51,8 @@
 </template>
 
 <script setup lang="ts">
+import { useMembersStore } from "../../../stores/members";
+
 const name = ref<string>("");
 const color = ref<string>("#AABBCC");
 const isAdmin = ref<boolean>(false);
@@ -63,6 +65,13 @@ const messageClass = computed(() =>
     : "text-green-600 dark:text-green-400",
 );
 
+const resetForm = () => {
+  name.value = "";
+  color.value = "#AABBCC";
+  isAdmin.value = false;
+  message.value = "";
+};
+
 const onSubmit = async () => {
   message.value = "";
   submitting.value = true;
@@ -71,11 +80,16 @@ const onSubmit = async () => {
       method: "POST",
       body: { name: name.value, color: color.value, isAdmin: isAdmin.value },
     });
-    name.value = "";
-    color.value = "#AABBCC";
-    isAdmin.value = false;
     message.value = "Member added";
-    window.dispatchEvent(new CustomEvent("members:updated"));
+    window.dispatchEvent(new CustomEvent("members:added"));
+    const memberStore = useMembersStore();
+    memberStore.addMember({
+      id: memberStore.members.length.toString(),
+      name: name.value,
+      color: color.value,
+      isAdmin: isAdmin.value,
+    });
+    resetForm();
   } catch (e: any) {
     message.value = "Error: " + (e?.data?.message || e?.message || "unknown");
   } finally {

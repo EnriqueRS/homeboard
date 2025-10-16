@@ -74,9 +74,19 @@ onMounted(() => {
       order.value = order.value.filter((k) => k !== "admin");
     }
   };
+  const handleMemberAdded = () => {
+    const nowIsAdmin = localStorage.getItem("homeboard:isAdmin") === "true";
+    if (nowIsAdmin && !order.value.includes("admin")) {
+      order.value = [...order.value, "admin"];
+    }
+  };
   window.addEventListener("member:changed", handleMemberChanged);
   onBeforeUnmount(() =>
     window.removeEventListener("member:changed", handleMemberChanged),
+  );
+  window.addEventListener("members:added", handleMemberAdded);
+  onBeforeUnmount(() =>
+    window.removeEventListener("members:added", handleMemberAdded),
   );
 });
 
